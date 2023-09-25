@@ -1,7 +1,7 @@
 <?php
 include_once 'connectdb.php';
 session_start();
-if (empty($_SESSION['useremail'])) {
+if (empty($_SESSION['useremail']) || $_SESSION['role'] == 'Admin') {
     header('Location: ../index.php');
 }
 include_once 'headeruser.php';
