@@ -1,5 +1,10 @@
 <?php
-include_once 'header.php';
+include_once 'connectdb.php';
+session_start();
+if (empty($_SESSION['useremail'])) {
+    header('Location: ../index.php');
+}
+include_once 'headeruser.php';
 ?>
 <!-- Content Wrapper. Contains page content -->
 <div class="content-wrapper">
