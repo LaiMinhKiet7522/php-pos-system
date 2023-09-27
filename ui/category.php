@@ -87,8 +87,8 @@ if (isset($_POST["btndelete"])) {
             <div class="card-header">
               <h5 class="m-0">Category Form</h5>
             </div>
-            <div class="card-body">
-              <form action="" method="post">
+            <form action="" method="post">
+              <div class="card-body">
                 <div class="row">
                   <?php
                   if (isset($_POST["btnedit"])) {
@@ -162,8 +162,8 @@ if (isset($_POST["btndelete"])) {
                     </table>
                   </div>
                 </div>
-              </form>
-            </div>
+              </div>
+            </form>
           </div>
         </div>
         <!-- /.col-lg-12 -->
