@@ -9,6 +9,23 @@ if ($_SESSION['role'] == 'Admin') {
 } else {
   include_once 'headeruser.php';
 }
+
+function fill_product($pdo)
+{
+  $output = '';
+  $select = $pdo->prepare("SELECT * FROM tbl_product ORDER BY product ASC");
+  $select->execute();
+  $result = $select->fetchAll(PDO::FETCH_ASSOC);
+
+  foreach ($result as $row) {
+    $output .= '<option value="' . $row['pid'] . '">' . $row['product'] . '</option>';
+  }
+  return $output;
+}
+
+$select = $pdo->prepare("SELECT * FROM tbl_taxdis WHERE taxdis_id = 1");
+$select->execute();
+$row = $select->fetch(PDO::FETCH_OBJ);
 ?>
 <style type="text/css">
   .tableFixHead {
@@ -74,14 +91,11 @@ if ($_SESSION['role'] == 'Admin') {
                     </div>
                     <input type="text" class="form-control" placeholder="Scan Barcode" name="txtbarcode" id="txtbarcode_id">
                   </div>
-                  <select class="form-control select2" style="width: 100%;">
-                    <option selected="selected">Alabama</option>
-                    <option>Alaska</option>
-                    <option>California</option>
-                    <option>Delaware</option>
-                    <option>Tennessee</option>
-                    <option>Texas</option>
-                    <option>Washington</option>
+                  <select class="form-control select2" data-dropdown-css-class="select2-purple" style="width: 100%;">
+                    <option selected disabled>Select OR Search</option>
+                    <?php
+                    echo fill_product($pdo);
+                    ?>
                   </select>
                   <br>
                   <div class="tableFixHead">
@@ -110,7 +124,7 @@ if ($_SESSION['role'] == 'Admin') {
                     <div class="input-group-prepend">
                       <span class="input-group-text">Subtotal</span>
                     </div>
-                    <input type="text" class="form-control" readonly>
+                    <input type="text" class="form-control" id="txtsubtotal_id" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
@@ -119,7 +133,7 @@ if ($_SESSION['role'] == 'Admin') {
                     <div class="input-group-prepend">
                       <span class="input-group-text">Discount</span>
                     </div>
-                    <input type="text" class="form-control">
+                    <input type="text" class="form-control" id="txtdiscount_p" value="<?php echo $row->discount; ?>">
                     <div class="input-group-append">
                       <span class="input-group-text">%</span>
                     </div>
@@ -128,7 +142,7 @@ if ($_SESSION['role'] == 'Admin') {
                     <div class="input-group-prepend">
                       <span class="input-group-text">Discount</span>
                     </div>
-                    <input type="text" class="form-control" readonly>
+                    <input type="text" class="form-control" id="txtdiscount_n" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
@@ -137,7 +151,7 @@ if ($_SESSION['role'] == 'Admin') {
                     <div class="input-group-prepend">
                       <span class="input-group-text">SGST</span>
                     </div>
-                    <input type="text" class="form-control" readonly>
+                    <input type="text" class="form-control" id="txtsgst_id_p" value="<?php echo $row->sgst; ?>" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">%</span>
                     </div>
@@ -146,7 +160,7 @@ if ($_SESSION['role'] == 'Admin') {
                     <div class="input-group-prepend">
                       <span class="input-group-text">CGST</span>
                     </div>
-                    <input type="text" class="form-control" readonly>
+                    <input type="text" class="form-control" id="txtcgst_id_p" value="<?php echo $row->cgst; ?>" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">%</span>
                     </div>
@@ -155,7 +169,7 @@ if ($_SESSION['role'] == 'Admin') {
                     <div class="input-group-prepend">
                       <span class="input-group-text">SGST</span>
                     </div>
-                    <input type="text" class="form-control" readonly>
+                    <input type="text" class="form-control" id="txtsgst_id_n" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
@@ -164,7 +178,7 @@ if ($_SESSION['role'] == 'Admin') {
                     <div class="input-group-prepend">
                       <span class="input-group-text">CGST</span>
                     </div>
-                    <input type="text" class="form-control" readonly>
+                    <input type="text" class="form-control" id="txtcgst_id_n" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
@@ -174,7 +188,7 @@ if ($_SESSION['role'] == 'Admin') {
                     <div class="input-group-prepend">
                       <span class="input-group-text">Total</span>
                     </div>
-                    <input type="text" class="form-control form-control-lg total" readonly>
+                    <input type="text" class="form-control form-control-lg total" id="txttotal" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
@@ -203,7 +217,7 @@ if ($_SESSION['role'] == 'Admin') {
                     <div class="input-group-prepend">
                       <span class="input-group-text">Due</span>
                     </div>
-                    <input type="text" class="form-control" readonly>
+                    <input type="text" class="form-control" id="txtdue" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
@@ -212,7 +226,7 @@ if ($_SESSION['role'] == 'Admin') {
                     <div class="input-group-prepend">
                       <span class="input-group-text">Paid</span>
                     </div>
-                    <input type="text" class="form-control">
+                    <input type="text" class="form-control" id="txtpaid">
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
@@ -271,6 +285,8 @@ include_once 'footer.php';
             $('#saleprice_id' + data["pid"]).html(saleprice);
             $('#saleprice_idd' + data["pid"]).val(saleprice);
 
+            calculate();
+
           } else {
 
             addrow(data["pid"], data["product"], data["saleprice"], data["stock"], data["barcode"]);
@@ -306,6 +322,8 @@ include_once 'footer.php';
                 '</tr>';
 
               $('.details').append(tr);
+
+              calculate();
             } //end function addrow
           }
         }
@@ -313,18 +331,143 @@ include_once 'footer.php';
     });
   });
 
-  $('#itemtable').delegate(".qty", "keyup change", function() {
+
+
+  var productArr = [];
+  $(function() {
+    $('.select2').on('change', function() {
+      var product_id = $('.select2').val();
+      $.ajax({
+        type: "get",
+        url: "getproduct.php",
+        data: {
+          id: product_id,
+        },
+        dataType: "json",
+        success: function(data) {
+          // alert('pid');
+          console.log(data);
+          if (jQuery.inArray(data['pid'], productArr) !== -1) {
+            var actualqty = parseInt($('#qty_id' + data["pid"]).val()) + 1;
+            $('#qty_id' + data["pid"]).val(actualqty);
+
+            var saleprice = parseInt(actualqty) * data["saleprice"];
+
+            $('#saleprice_id' + data["pid"]).html(saleprice);
+            $('#saleprice_idd' + data["pid"]).val(saleprice);
+
+            calculate();
+
+          } else {
+
+            addrow(data["pid"], data["product"], data["saleprice"], data["stock"], data["barcode"]);
+
+            productArr.push(data["pid"]);
+
+            $("#txtbarcode_id").val("");
+
+            function addrow(pid, product, saleprice, stock, barcode) {
+
+              var tr = '<tr>' +
+
+                '<input type="hidden" class="form-control barcode" name="barcode_arr[]" id="barcode_id' + barcode + '" value="' + barcode + '" >' +
+
+                '<td style="text-align:left; vertical-align:middle; font-size:17px;"><class="form-control product_c" name="product_arr[]" <span class="badge badge-dark">' + product + '</span><input type="hidden" class="form-control pid" name="pid_arr[]" value="' + pid + '" ><input type="hidden" class="form-control product" name="product_arr[]" value="' + product + '" >  </td>' +
+
+                '<td style="text-align:left; vertical-align:middle; font-size:17px;"><span class="badge badge-primary stocklbl" name="stock_arr[]" id="stock_id' + pid + '">' + stock + '</span><input type="hidden" class="form-control stock_c" name="stock_c_arr[]" id="stock_idd' + pid + '" value="' + stock + '"></td>' +
+
+                '<td style="text-align:left; vertical-align:middle; font-size:17px;"><span class="badge badge-warning price" name="price_arr[]" id="price_id' + pid + '">' + saleprice + '</span><input type="hidden" class="form-control price_c" name="price_c_arr[]" id="price_idd' + pid + '" value="' + saleprice + '"></td>' +
+
+                '<td><input type="text" class="form-control qty" name="quantity_arr[]" id="qty_id' + pid + '" value="' + 1 + '" size="1"></td>' +
+
+                '<td style="text-align:left; vertical-align:middle; font-size:17px;"><span class="badge badge-success totalamt" name="netamt_arr[]" id="saleprice_id' + pid + '">' + saleprice + '</span><input type="hidden" class="form-control saleprice" name="saleprice_arr[]" id="saleprice_idd' + pid + '" value="' + saleprice + '"></td>' +
+
+                //remove button code start here
+
+                // '<td style="text-align:left; vertical-align:middle;"><center><name="remove" class"btnremove" data-id="'+pid+'"><span class="fas fa-trash" style="color:red"></span></center></td>'+
+                // '</tr>';
+
+                '<td><center><button type="button" name="remove" class="btn btn-danger btn-sm btnremove" data-id="' + pid + '"><span class="fas fa-trash"></span></center></td>' +
+
+
+                '</tr>';
+
+              $('.details').append(tr);
+
+              calculate();
+            } //end function addrow
+          }
+        }
+      });
+    });
+  });
+
+  $("#itemtable").delegate(".qty", "keyup change", function() {
+
     var quantity = $(this);
     var tr = $(this).parent().parent();
 
-    if ((quantity.val() - 0) > tr.find(".stock_c").val() - 0) {
-      Swal.fire("Warning", "SORRY! This Much Of Quantity Is Not Available", "warning");
+    if ((quantity.val() - 0) > (tr.find(".stock_c").val() - 0)) {
+
+      Swal.fire("WARNING!", "SORRY! This Much Of Quantity Is Not Available", "warning");
       quantity.val(1);
+
       tr.find(".totalamt").text(quantity.val() * tr.find(".price").text());
-      tr.find(".saleprice").text(quantity.val() * tr.find(".price").text());
+
+      tr.find(".saleprice").val(quantity.val() * tr.find(".price").text());
+      calculate(0, 0);
     } else {
       tr.find(".totalamt").text(quantity.val() * tr.find(".price").text());
-      tr.find(".saleprice").text(quantity.val() * tr.find(".price").text());
+
+      tr.find(".saleprice").val(quantity.val() * tr.find(".price").text());
+      calculate(0, 0);
     }
   });
+
+  function calculate() {
+
+    var subtotal = 0;
+    var discount = 0;
+    var sgst = 0;
+    var cgst = 0;
+    var total = 0;
+    var paid_amt = 0;
+    var due = 0;
+
+    $(".saleprice").each(function() {
+
+      subtotal = subtotal + ($(this).val() * 1);
+    });
+
+    $("#txtsubtotal_id").val(subtotal.toFixed(2));
+
+    sgst = parseFloat($("#txtsgst_id_p").val());
+
+    cgst = parseFloat($("#txtcgst_id_p").val());
+
+    discount = parseFloat($("#txtdiscount_p").val());
+
+    sgst = sgst / 100;
+    sgst = sgst * subtotal;
+
+    cgst = cgst / 100;
+    cgst = cgst * subtotal;
+
+    discount = discount / 100;
+    discount = discount * subtotal;
+
+    $("#txtsgst_id_n").val(sgst.toFixed(2));
+
+    $("#txtcgst_id_n").val(cgst.toFixed(2));
+
+    $("#txtdiscount_n").val(discount.toFixed(2));
+
+    total = sgst + cgst + subtotal - discount;
+    due = total - paid_amt;
+
+    $("#txttotal").val(total.toFixed(2));
+
+    $("#txtdue").val(due.toFixed(2));
+
+  }
 </script>

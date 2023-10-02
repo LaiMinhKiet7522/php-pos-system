@@ -240,7 +240,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
               </a>
             </li>
             <li class="nav-item">
-              <a href="#" class="nav-link">
+              <a href="pos.php" class="nav-link">
                 <i class="nav-icon fas fa-book"></i>
                 <p>
                   POS
