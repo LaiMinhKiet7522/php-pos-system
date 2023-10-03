@@ -285,7 +285,7 @@ include_once 'footer.php';
             $('#saleprice_id' + data["pid"]).html(saleprice);
             $('#saleprice_idd' + data["pid"]).val(saleprice);
 
-            calculate();
+            calculate(0, 0);
 
           } else {
 
@@ -311,19 +311,13 @@ include_once 'footer.php';
 
                 '<td style="text-align:left; vertical-align:middle; font-size:17px;"><span class="badge badge-success totalamt" name="netamt_arr[]" id="saleprice_id' + pid + '">' + saleprice + '</span><input type="hidden" class="form-control saleprice" name="saleprice_arr[]" id="saleprice_idd' + pid + '" value="' + saleprice + '"></td>' +
 
-                //remove button code start here
-
-                // '<td style="text-align:left; vertical-align:middle;"><center><name="remove" class"btnremove" data-id="'+pid+'"><span class="fas fa-trash" style="color:red"></span></center></td>'+
-                // '</tr>';
-
                 '<td><center><button type="button" name="remove" class="btn btn-danger btn-sm btnremove" data-id="' + pid + '"><span class="fas fa-trash"></span></center></td>' +
-
 
                 '</tr>';
 
               $('.details').append(tr);
 
-              calculate();
+              calculate(0, 0);
             } //end function addrow
           }
         }
@@ -356,7 +350,7 @@ include_once 'footer.php';
             $('#saleprice_id' + data["pid"]).html(saleprice);
             $('#saleprice_idd' + data["pid"]).val(saleprice);
 
-            calculate();
+            calculate(0, 0);
 
           } else {
 
@@ -394,7 +388,7 @@ include_once 'footer.php';
 
               $('.details').append(tr);
 
-              calculate();
+              calculate(0, 0);
             } //end function addrow
           }
         }
@@ -424,14 +418,14 @@ include_once 'footer.php';
     }
   });
 
-  function calculate() {
+  function calculate(dis, paid) {
 
     var subtotal = 0;
-    var discount = 0;
+    var discount = dis;
     var sgst = 0;
     var cgst = 0;
     var total = 0;
-    var paid_amt = 0;
+    var paid_amt = paid;
     var due = 0;
 
     $(".saleprice").each(function() {
@@ -470,4 +464,25 @@ include_once 'footer.php';
     $("#txtdue").val(due.toFixed(2));
 
   }
+
+  $('#txtdiscount_p').keyup(function() {
+    var discount = $(this).val();
+    calculate(discount, 0);
+  });
+
+  $('#txtpaid').keyup(function() {
+    var paid = $(this).val();
+    var discount = $('#txtdiscount_p').val();
+    calculate(discount, paid);
+  });
+
+  $(document).on('click', '.btnremove', function() {
+    var removed = $(this).attr('data-id');
+    productArr = jQuery.grep(productArr, function(value) {
+      return value != removed;
+      calculate(0, 0);
+    });
+    $(this).closest('tr').remove();
+    calculate(0, 0);
+  });
 </script>
