@@ -24,16 +24,38 @@ function fill_product($pdo)
   return $output;
 }
 
-if (isset($_POST['btnsaveorder'])) {
-  $orderdate     = date('Y-m-d');
-  $subtotal      = $_POST['txtsubtotal'];
-  $discount      = $_POST['txtdiscount'];
-  $sgst          = $_POST['txtsgst'];
-  $cgst          = $_POST['txtcgst'];
-  $total         = $_POST['txttotal'];
-  $payment_type  = $_POST['rb'];
-  $due           = $_POST['txtdue'];
-  $paid          = $_POST['txtpaid'];
+$id = $_GET["id"];
+
+$select = $pdo->prepare("select * from tbl_invoice where invoice_id=$id");
+$select->execute();
+$row = $select->fetch(PDO::FETCH_ASSOC);
+
+$order_date = date('Y-m-d', strtotime($row['order_date']));
+$subtotal     = $row['subtotal'];
+$sgst         = $row['sgst'];
+$cgst         = $row['cgst'];
+$discount     = $row['discount'];
+$total        = $row['total'];
+$paid         = $row['paid'];
+$due          = $row['due'];
+$payment_type = $row['payment_type'];
+
+$select=$pdo->prepare("select * from tbl_invoice_details where invoice_id=$id");
+$select->execute();
+$row_invoice_details=$select->fetchAll(PDO::FETCH_ASSOC);
+
+if (isset($_POST['btnupdateorder'])) {
+
+  //Get values from text fields and from array in variables.
+  $txt_orderdate     = date('Y-m-d');
+  $txt_subtotal      = $_POST['txtsubtotal'];
+  $txt_discount      = $_POST['txtdiscount'];
+  $txt_sgst          = $_POST['txtsgst'];
+  $txt_cgst          = $_POST['txtcgst'];
+  $txt_total         = $_POST['txttotal'];
+  $txt_payment_type  = $_POST['rb'];
+  $txt_due           = $_POST['txtdue'];
+  $txt_paid          = $_POST['txtpaid'];
 
 
   $arr_pid     = $_POST['pid_arr'];
@@ -44,41 +66,60 @@ if (isset($_POST['btnsaveorder'])) {
   $arr_price   = $_POST['price_c_arr'];
   $arr_total   = $_POST['saleprice_arr'];
 
-  $insert = $pdo->prepare("insert into tbl_invoice (order_date,subtotal,discount,sgst,cgst,total,payment_type,due,paid) values(:orderdate,:subtotal,:discount,:sgst,:cgst,:total,:payment_type,:due,:paid)");
+  //Write update query for tbl_product add stock.
+  foreach ($row_invoice_details as $product_invoice_details) {
+    $updateproduct_stock = $pdo->prepare("update tbl_product set stock=stock+" . $product_invoice_details['qty'] . " where pid='" . $product_invoice_details['product_id'] . "'");
+    $updateproduct_stock->execute();
+  }
 
-  $insert->bindParam(':orderdate', $orderdate);
-  $insert->bindParam(':subtotal', $subtotal);
-  $insert->bindParam(':discount', $discount);
-  $insert->bindParam(':sgst', $sgst);
-  $insert->bindParam(':cgst', $cgst);
-  $insert->bindParam(':total', $total);
-  $insert->bindParam(':payment_type', $payment_type);
-  $insert->bindParam(':due', $due);
-  $insert->bindParam(':paid', $paid);
+  //Write delete query for tbl_invoice_details table data where invoice_id =$id .
+  $delete_invoice_details = $pdo->prepare("delete from tbl_invoice_details where invoice_id =$id");
+  $delete_invoice_details->execute();
 
-  $insert->execute();
+  //Write update query for tbl_invoice table data.
+  $update_tbl_invoice = $pdo->prepare("update tbl_invoice SET order_date=:orderdate,subtotal=:subtotal,discount=:discount,sgst=:sgst,cgst=:cgst,total=:total,payment_type=:payment_type,due=:due,paid=:paid where invoice_id=$id");
+
+  $update_tbl_invoice->bindParam(':orderdate', $txt_orderdate);
+  $update_tbl_invoice->bindParam(':subtotal', $txt_subtotal);
+  $update_tbl_invoice->bindParam(':discount', $txt_discount);
+  $update_tbl_invoice->bindParam(':sgst', $txt_sgst);
+  $update_tbl_invoice->bindParam(':cgst', $txt_cgst);
+  $update_tbl_invoice->bindParam(':total', $txt_total);
+  $update_tbl_invoice->bindParam(':payment_type', $txt_payment_type);
+  $update_tbl_invoice->bindParam(':due', $txt_due);
+  $update_tbl_invoice->bindParam(':paid', $txt_paid);
+
+  $update_tbl_invoice->execute();
 
   $invoice_id = $pdo->lastInsertId();
-
   if ($invoice_id != null) {
+
+    //Write select query for tbl_product table to get out stock value.
     for ($i = 0; $i < count($arr_pid); $i++) {
-      $rem_qty = $arr_stock[$i] - $arr_qty[$i];
-      if ($rem_qty < 0) {
-        return "Order is not completed";
-      } else {
-        $update = $pdo->prepare("update tbl_product SET stock='$rem_qty' where pid='" . $arr_pid[$i] . "'");
-        $update->execute();
+      $selectpdt = $pdo->prepare("select * from tbl_product where pid='" . $arr_pid[$i] . "'");
+      $selectpdt->execute();
+      while ($rowpdt = $selectpdt->fetch(PDO::FETCH_OBJ)) {
+        $db_stock[$i] = $rowpdt->stock;
+        $rem_qty = $db_stock[$i] - $arr_qty[$i];
+        if ($rem_qty < 0) {
+          return "Order is not completed";
+        } else {
+          //Write update query for tbl_product table to update stock values.
+          $update = $pdo->prepare("update tbl_product SET stock='$rem_qty' where pid='" . $arr_pid[$i] . "'");
+          $update->execute();
+        }
       }
+      //Write insert query for tbl_invoice_details for insert new records.
       $insert = $pdo->prepare("insert into tbl_invoice_details (invoice_id,barcode,product_id,product_name,qty,rate,saleprice,order_date) values (:invid,:barcode,:pid,:name,:qty,:rate,:saleprice,:order_date)");
-      $insert->bindParam(':invid', $invoice_id);
+      $insert->bindParam(':invid', $id);
       $insert->bindParam(':barcode', $arr_barcode[$i]);
       $insert->bindParam(':pid', $arr_pid[$i]);
       $insert->bindParam(':name', $arr_name[$i]);
       $insert->bindParam(':qty', $arr_qty[$i]);
       $insert->bindParam(':rate', $arr_price[$i]);
       $insert->bindParam(':saleprice', $arr_total[$i]);
-      $insert->bindParam(':order_date', $orderdate);
-      if(!$insert->execute()){
+      $insert->bindParam(':order_date', $txt_orderdate);
+      if (!$insert->execute()) {
         print_r($insert->errorInfo());
       }
     }
@@ -189,7 +230,7 @@ $row = $select->fetch(PDO::FETCH_OBJ);
                     <div class="input-group-prepend">
                       <span class="input-group-text">Subtotal</span>
                     </div>
-                    <input type="text" class="form-control" id="txtsubtotal_id" name="txtsubtotal" readonly>
+                    <input type="text" class="form-control" id="txtsubtotal_id" name="txtsubtotal" value="<?php echo $subtotal; ?>" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
@@ -253,26 +294,26 @@ $row = $select->fetch(PDO::FETCH_OBJ);
                     <div class="input-group-prepend">
                       <span class="input-group-text">Total</span>
                     </div>
-                    <input type="text" class="form-control form-control-lg total" id="txttotal" name="txttotal" readonly>
+                    <input type="text" class="form-control form-control-lg total" id="txttotal" name="txttotal" value="<?php echo $total; ?>" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
                   </div>
                   <hr style="height:2px; border-width:0; color:black; background-color:black;">
                   <div class="icheck-success d-inline">
-                    <input type="radio" name="rb" value="Cash" checked id="radioSuccess1">
+                    <input type="radio" name="rb" value="Cash" <?php echo ($payment_type == 'Cash') ? 'checked' : ''; ?> id="radioSuccess1">
                     <label for="radioSuccess1">
                       Cash
                     </label>
                   </div>
                   <div class="icheck-primary d-inline">
-                    <input type="radio" name="rb" value="Card" id="radioSuccess2">
+                    <input type="radio" name="rb" value="Card" <?php echo ($payment_type == 'Cash') ? 'checked' : ''; ?> id="radioSuccess2">
                     <label for="radioSuccess2">
                       Card
                     </label>
                   </div>
                   <div class="icheck-danger d-inline">
-                    <input type="radio" name="rb" value="Check" id="radioSuccess3">
+                    <input type="radio" name="rb" value="Check" <?php echo ($payment_type == 'Cash') ? 'checked' : ''; ?> id="radioSuccess3">
                     <label for="radioSuccess3">
                       Check
                     </label>
@@ -282,7 +323,7 @@ $row = $select->fetch(PDO::FETCH_OBJ);
                     <div class="input-group-prepend">
                       <span class="input-group-text">Due</span>
                     </div>
-                    <input type="text" class="form-control" id="txtdue" name="txtdue" readonly>
+                    <input type="text" class="form-control" id="txtdue" name="txtdue" value="<?php echo $due; ?>" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
@@ -291,7 +332,7 @@ $row = $select->fetch(PDO::FETCH_OBJ);
                     <div class="input-group-prepend">
                       <span class="input-group-text">Paid</span>
                     </div>
-                    <input type="text" class="form-control" id="txtpaid" name="txtpaid">
+                    <input type="text" class="form-control" id="txtpaid" name="txtpaid" value="<?php echo $paid; ?>" require>
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
@@ -299,7 +340,7 @@ $row = $select->fetch(PDO::FETCH_OBJ);
                   <hr style="height:2px; border-width:0; color:black; background-color:black;">
                   <div class="card-footer text-center">
                     <div class="text-center">
-                      <button type="submit" class="btn btn-success" name="btnsaveorder">Save Order</button>
+                      <button type="submit" class="btn btn-info" name="btnupdateorder">Update Order</button>
                     </div>
                   </div>
                 </div>
@@ -331,6 +372,71 @@ include_once 'footer.php';
   })
 
   var productArr = [];
+
+  $.ajax({
+    type: "get",
+    url: "getorderproduct.php",
+    data: {
+      id: <?php echo $_GET['id']; ?>
+    },
+    dataType: "json",
+    success: function(data) {
+      // alert('pid');
+      console.log(data);
+      $.each(data, function(key, data) {
+        if (jQuery.inArray(data['product_id'], productArr) !== -1) {
+          var actualqty = parseInt($('#qty_id' + data["product_id"]).val()) + 1;
+          $('#qty_id' + data["product_id"]).val(actualqty);
+
+          var saleprice = parseInt(actualqty) * data["saleprice"];
+
+          $('#saleprice_id' + data["product_id"]).html(saleprice);
+          $('#saleprice_idd' + data["product_id"]).val(saleprice);
+
+          calculate(0, 0);
+
+        } else {
+
+          addrow(data["product_id"], data["product_name"], data["qty"], data["rate"], data["saleprice"], data["stock"], data["barcode"]);
+
+          productArr.push(data["product_id"]);
+
+          // $("#txtbarcode_id").val("");
+
+          function addrow(product_id, product_name, qty, rate, saleprice, stock, barcode) {
+
+            var tr = '<tr>' +
+
+              '<input type="hidden" class="form-control barcode" name="barcode_arr[]" id="barcode_id' + barcode + '" value="' + barcode + '" >' +
+
+              '<td style="text-align:left; vertical-align:middle; font-size:17px;"><class="form-control product_c" name="product_arr[]" <span class="badge badge-dark">' + product_name + '</span><input type="hidden" class="form-control pid" name="pid_arr[]" value="' + product_id + '" ><input type="hidden" class="form-control product" name="product_arr[]" value="' + product_name + '" >  </td>' +
+
+              '<td style="text-align:left; vertical-align:middle; font-size:17px;"><span class="badge badge-primary stocklbl" name="stock_arr[]" id="stock_id' + product_id + '">' + stock + '</span><input type="hidden" class="form-control stock_c" name="stock_c_arr[]" id="stock_idd' + product_id + '" value="' + stock + '"></td>' +
+
+              '<td style="text-align:left; vertical-align:middle; font-size:17px;"><span class="badge badge-warning price" name="price_arr[]" id="price_id' + product_id + '">' + saleprice + '</span><input type="hidden" class="form-control price_c" name="price_c_arr[]" id="price_idd' + product_id + '" value="' + saleprice + '"></td>' +
+
+              '<td><input type="text" class="form-control qty" name="quantity_arr[]" id="qty_id' + product_id + '" value="' + qty + '" size="1"></td>' +
+
+              '<td style="text-align:left; vertical-align:middle; font-size:17px;"><span class="badge badge-success totalamt" name="netamt_arr[]" id="saleprice_id' + product_id + '">' + rate * qty + '</span><input type="hidden" class="form-control saleprice" name="saleprice_arr[]" id="saleprice_idd' + product_id + '" value="' + rate * qty + '"></td>' +
+
+              //remove button code start here
+
+              // '<td style="text-align:left; vertical-align:middle;"><center><name="remove" class"btnremove" data-id="'+pid+'"><span class="fas fa-trash" style="color:red"></span></center></td>'+
+              // '</tr>';
+
+              '<td><center><button type="button" name="remove" class="btn btn-danger btn-sm btnremove" data-id="' + product_id + '"><span class="fas fa-trash"></span></center></td>' +
+
+
+              '</tr>';
+
+            $('.details').append(tr);
+            calculate(0, 0);
+          } //end function addrow
+        }
+      });
+    }
+  });
+
   $(function() {
     $('#txtbarcode_id').on('change', function() {
       var barcode = $('#txtbarcode_id').val();
@@ -354,6 +460,8 @@ include_once 'footer.php';
             $('#saleprice_idd' + data["pid"]).val(saleprice);
 
             calculate(0, 0);
+            $("#txtpaid").val("");
+            $("#txtdue").val("");
 
           } else {
 
@@ -386,6 +494,8 @@ include_once 'footer.php';
               $('.details').append(tr);
 
               calculate(0, 0);
+              $("#txtpaid").val("");
+              $("#txtdue").val("");
             } //end function addrow
           }
         }
@@ -419,6 +529,8 @@ include_once 'footer.php';
             $('#saleprice_idd' + data["pid"]).val(saleprice);
 
             calculate(0, 0);
+            $("#txtpaid").val("");
+            $("#txtdue").val("");
 
           } else {
 
@@ -451,6 +563,8 @@ include_once 'footer.php';
               $('.details').append(tr);
 
               calculate(0, 0);
+              $("#txtpaid").val("");
+              $("#txtdue").val("");
             } //end function addrow
           }
         }
@@ -472,11 +586,15 @@ include_once 'footer.php';
 
       tr.find(".saleprice").val(quantity.val() * tr.find(".price").text());
       calculate(0, 0);
+      $("#txtpaid").val("");
+      $("#txtdue").val("");
     } else {
       tr.find(".totalamt").text(quantity.val() * tr.find(".price").text());
 
       tr.find(".saleprice").val(quantity.val() * tr.find(".price").text());
       calculate(0, 0);
+      $("#txtpaid").val("");
+      $("#txtdue").val("");
     }
   });
 
@@ -523,7 +641,10 @@ include_once 'footer.php';
 
     $("#txttotal").val(total.toFixed(2));
 
-    $("#txtdue").val(due.toFixed(2));
+    paid_db = parseFloat($("#txtpaid").val());
+    due_db = paid_db - total;
+
+    $("#txtdue").val(due_db.toFixed(2));
 
   }
 
@@ -539,12 +660,19 @@ include_once 'footer.php';
   });
 
   $(document).on('click', '.btnremove', function() {
-    var removed = $(this).attr('data-id');
-    productArr = jQuery.grep(productArr, function(value) {
+
+    var removed = $(this).attr("data-id");
+    productarr = jQuery.grep(productArr, function(value) {
+
       return value != removed;
       calculate(0, 0);
-    });
+      $("#txtpaid").val("");
+      $("#txtdue").val("");
+    })
+
     $(this).closest('tr').remove();
     calculate(0, 0);
+    $("#txtpaid").val("");
+    $("#txtdue").val("");
   });
 </script>
