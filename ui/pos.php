@@ -23,6 +23,68 @@ function fill_product($pdo)
   return $output;
 }
 
+if (isset($_POST['btnsaveorder'])) {
+  $orderdate     = date('Y-m-d');
+  $subtotal      = $_POST['txtsubtotal'];
+  $discount      = $_POST['txtdiscount'];
+  $sgst          = $_POST['txtsgst'];
+  $cgst          = $_POST['txtcgst'];
+  $total         = $_POST['txttotal'];
+  $payment_type  = $_POST['rb'];
+  $due           = $_POST['txtdue'];
+  $paid          = $_POST['txtpaid'];
+
+
+  $arr_pid     = $_POST['pid_arr'];
+  $arr_barcode = $_POST['barcode_arr'];
+  $arr_name    = $_POST['product_arr'];
+  $arr_stock   = $_POST['stock_c_arr'];
+  $arr_qty     = $_POST['quantity_arr'];
+  $arr_price   = $_POST['price_c_arr'];
+  $arr_total   = $_POST['saleprice_arr'];
+
+  $insert = $pdo->prepare("insert into tbl_invoice (order_date,subtotal,discount,sgst,cgst,total,payment_type,due,paid) values(:orderdate,:subtotal,:discount,:sgst,:cgst,:total,:payment_type,:due,:paid)");
+
+  $insert->bindParam(':orderdate', $orderdate);
+  $insert->bindParam(':subtotal', $subtotal);
+  $insert->bindParam(':discount', $discount);
+  $insert->bindParam(':sgst', $sgst);
+  $insert->bindParam(':cgst', $cgst);
+  $insert->bindParam(':total', $total);
+  $insert->bindParam(':payment_type', $payment_type);
+  $insert->bindParam(':due', $due);
+  $insert->bindParam(':paid', $paid);
+
+  $insert->execute();
+
+  $invoice_id = $pdo->lastInsertId();
+
+  if ($invoice_id != null) {
+    for ($i = 0; $i < count($arr_pid); $i++) {
+      $rem_qty = $arr_stock[$i] - $arr_qty[$i];
+      if ($rem_qty < 0) {
+        return "Order is not completed";
+      } else {
+        $update = $pdo->prepare("update tbl_product SET stock='$rem_qty' where pid='" . $arr_pid[$i] . "'");
+        $update->execute();
+      }
+      $insert = $pdo->prepare("insert into tbl_invoice_details (invoice_id,barcode,product_id,product_name,qty,rate,saleprice,order_date) values (:invid,:barcode,:pid,:name,:qty,:rate,:saleprice,:order_date)");
+      $insert->bindParam(':invid', $invoice_id);
+      $insert->bindParam(':barcode', $arr_barcode[$i]);
+      $insert->bindParam(':pid', $arr_pid[$i]);
+      $insert->bindParam(':name', $arr_name[$i]);
+      $insert->bindParam(':qty', $arr_qty[$i]);
+      $insert->bindParam(':rate', $arr_price[$i]);
+      $insert->bindParam(':saleprice', $arr_total[$i]);
+      $insert->bindParam(':order_date', $orderdate);
+      if(!$insert->execute()){
+        print_r($insert->errorInfo());
+      }
+    }
+    // header('location:orderlist.php');
+  }
+}
+
 $select = $pdo->prepare("SELECT * FROM tbl_taxdis WHERE taxdis_id = 1");
 $select->execute();
 $row = $select->fetch(PDO::FETCH_OBJ);
@@ -78,6 +140,7 @@ $row = $select->fetch(PDO::FETCH_OBJ);
     <div class="container-fluid">
       <div class="row">
         <div class="col-lg-12">
+
           <div class="card card-primary card-outline">
             <div class="card-header">
               <h5 class="m-0">POS</h5>
@@ -91,40 +154,41 @@ $row = $select->fetch(PDO::FETCH_OBJ);
                     </div>
                     <input type="text" class="form-control" placeholder="Scan Barcode" name="txtbarcode" id="txtbarcode_id">
                   </div>
-                  <select class="form-control select2" data-dropdown-css-class="select2-purple" style="width: 100%;">
-                    <option selected disabled>Select OR Search</option>
-                    <?php
-                    echo fill_product($pdo);
-                    ?>
-                  </select>
-                  <br>
-                  <div class="tableFixHead">
-                    <table id="producttable" class="table table-bordered table-striped">
-                      <thead>
-                        <tr class="text-center">
-                          <th>Product</th>
-                          <th>Stock</th>
-                          <th>Price</th>
-                          <th>Quantity</th>
-                          <th>Total</th>
-                          <th>Delete</th>
-                        </tr>
-                      </thead>
-                      <tbody class="details" id="itemtable">
-                        <tr data-widget="expandable-table" aria-expanded="false">
+                  <form action="" method="post" name="">
+                    <select class="form-control select2" data-dropdown-css-class="select2-purple" style="width: 100%;">
+                      <option selected disabled>Select OR Search</option>
+                      <?php
+                      echo fill_product($pdo);
+                      ?>
+                    </select>
+                    <br>
+                    <div class="tableFixHead">
+                      <table id="producttable" class="table table-bordered table-striped">
+                        <thead>
+                          <tr class="text-center">
+                            <th>Product</th>
+                            <th>Stock</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Total</th>
+                            <th>Delete</th>
+                          </tr>
+                        </thead>
+                        <tbody class="details" id="itemtable">
+                          <tr data-widget="expandable-table" aria-expanded="false">
 
-                        </tr>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                          </tr>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                 </div>
                 <div class="col-md-4">
                   <div class="input-group">
                     <div class="input-group-prepend">
                       <span class="input-group-text">Subtotal</span>
                     </div>
-                    <input type="text" class="form-control" id="txtsubtotal_id" readonly>
+                    <input type="text" class="form-control" id="txtsubtotal_id" name="txtsubtotal" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
@@ -133,7 +197,7 @@ $row = $select->fetch(PDO::FETCH_OBJ);
                     <div class="input-group-prepend">
                       <span class="input-group-text">Discount</span>
                     </div>
-                    <input type="text" class="form-control" id="txtdiscount_p" value="<?php echo $row->discount; ?>">
+                    <input type="text" class="form-control" id="txtdiscount_p" name="txtdiscount" value="<?php echo $row->discount; ?>">
                     <div class="input-group-append">
                       <span class="input-group-text">%</span>
                     </div>
@@ -151,7 +215,7 @@ $row = $select->fetch(PDO::FETCH_OBJ);
                     <div class="input-group-prepend">
                       <span class="input-group-text">SGST</span>
                     </div>
-                    <input type="text" class="form-control" id="txtsgst_id_p" value="<?php echo $row->sgst; ?>" readonly>
+                    <input type="text" class="form-control" id="txtsgst_id_p" name="txtsgst" value="<?php echo $row->sgst; ?>" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">%</span>
                     </div>
@@ -160,7 +224,7 @@ $row = $select->fetch(PDO::FETCH_OBJ);
                     <div class="input-group-prepend">
                       <span class="input-group-text">CGST</span>
                     </div>
-                    <input type="text" class="form-control" id="txtcgst_id_p" value="<?php echo $row->cgst; ?>" readonly>
+                    <input type="text" class="form-control" id="txtcgst_id_p" name="txtcgst" value="<?php echo $row->cgst; ?>" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">%</span>
                     </div>
@@ -188,26 +252,26 @@ $row = $select->fetch(PDO::FETCH_OBJ);
                     <div class="input-group-prepend">
                       <span class="input-group-text">Total</span>
                     </div>
-                    <input type="text" class="form-control form-control-lg total" id="txttotal" readonly>
+                    <input type="text" class="form-control form-control-lg total" id="txttotal" name="txttotal" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
                   </div>
                   <hr style="height:2px; border-width:0; color:black; background-color:black;">
                   <div class="icheck-success d-inline">
-                    <input type="radio" name="r3" checked id="radioSuccess1">
+                    <input type="radio" name="rb" value="Cash" checked id="radioSuccess1">
                     <label for="radioSuccess1">
                       Cash
                     </label>
                   </div>
                   <div class="icheck-primary d-inline">
-                    <input type="radio" name="r3" id="radioSuccess2">
+                    <input type="radio" name="rb" value="Card" id="radioSuccess2">
                     <label for="radioSuccess2">
                       Card
                     </label>
                   </div>
                   <div class="icheck-danger d-inline">
-                    <input type="radio" name="r3" id="radioSuccess3">
+                    <input type="radio" name="rb" value="Check" id="radioSuccess3">
                     <label for="radioSuccess3">
                       Check
                     </label>
@@ -217,7 +281,7 @@ $row = $select->fetch(PDO::FETCH_OBJ);
                     <div class="input-group-prepend">
                       <span class="input-group-text">Due</span>
                     </div>
-                    <input type="text" class="form-control" id="txtdue" readonly>
+                    <input type="text" class="form-control" id="txtdue" name="txtdue" readonly>
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
@@ -226,19 +290,22 @@ $row = $select->fetch(PDO::FETCH_OBJ);
                     <div class="input-group-prepend">
                       <span class="input-group-text">Paid</span>
                     </div>
-                    <input type="text" class="form-control" id="txtpaid">
+                    <input type="text" class="form-control" id="txtpaid" name="txtpaid">
                     <div class="input-group-append">
                       <span class="input-group-text">$</span>
                     </div>
                   </div>
                   <hr style="height:2px; border-width:0; color:black; background-color:black;">
                   <div class="card-footer text-center">
-                    <input type="button" value="Save Order" class="btn btn-primary">
+                    <div class="text-center">
+                      <button type="submit" class="btn btn-success" name="btnsaveorder">Save Order</button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+          </form>
         </div>
         <!-- /.col-lg-12 -->
 
@@ -376,13 +443,7 @@ include_once 'footer.php';
 
                 '<td style="text-align:left; vertical-align:middle; font-size:17px;"><span class="badge badge-success totalamt" name="netamt_arr[]" id="saleprice_id' + pid + '">' + saleprice + '</span><input type="hidden" class="form-control saleprice" name="saleprice_arr[]" id="saleprice_idd' + pid + '" value="' + saleprice + '"></td>' +
 
-                //remove button code start here
-
-                // '<td style="text-align:left; vertical-align:middle;"><center><name="remove" class"btnremove" data-id="'+pid+'"><span class="fas fa-trash" style="color:red"></span></center></td>'+
-                // '</tr>';
-
                 '<td><center><button type="button" name="remove" class="btn btn-danger btn-sm btnremove" data-id="' + pid + '"><span class="fas fa-trash"></span></center></td>' +
-
 
                 '</tr>';
 
